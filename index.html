@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laundry Booking System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #60a5fa;
+            --accent: #dbeafe;
+            --background: #f8fafc;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+        }
+
+        .machine-card {
+            transition: transform 0.2s;
+        }
+
+        .machine-card:hover {
+            transform: translateY(-2px);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .available { background-color: #dcfce7; color: #166534; }
+        .in-use { background-color: #fee2e2; color: #991b1b; }
+        .reserved { background-color: #fef3c7; color: #92400e; }
+        .queue-position { background: #f1f5f9; border-left: 4px solid #2563eb; }
+
+        @keyframes slideIn {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .hidden {
+        display: none;
+        }
+
+        .queue-item {
+        background-color: #bfdbfe; /* Light blue background */
+        color: #1e3a8a; /* Dark blue text color */
+        padding: 8px;
+        border-bottom: 1px solid #d1d5db;
+        }
+
+        .queue-item-B {
+        background-color: #bfdbfe; /* Light blue background */
+        color: #1e3a8a; /* Dark blue text color */
+        padding: 8px;
+        border-bottom: 1px solid #d1d5db;
+        }
+
+        .queue-item-C {
+        background-color: #bfdbfe; /* Light blue background */
+        color: #1e3a8a; /* Dark blue text color */
+        padding: 8px;
+        border-bottom: 1px solid #d1d5db;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Page -->
+    <div id="loginPage" class="flex justify-center items-center min-h-screen bg-gradient-to-r from-blue-200 to-blue-100">
+        <div class="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold text-center text-blue-600 mb-6" id="formTitle">Login to WashWait</h2>
+            <form id="authForm">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="username" name="username" class="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" name="password" class="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" id="authButton">Login</button>
+                <p class="text-sm text-center mt-4">
+                    Don't have an account?
+                    <button type="button" id="switchToRegister" class="text-blue-600 hover:underline">Register</button>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Page -->
+<div id="reportPage" class="hidden min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-gray-100 to-gray-200 px-4">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+        <h2 class="text-2xl font-semibold text-blue-600 mb-4">Report an Issue</h2>
+        <p class="text-gray-700 mb-4">
+            If you encounter any issues, you can report them using the Google Form link below or contact the relevant personnel directly:
+        </p>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLScjSTCnlUrUfGFTpHnO4lNWa7EFw1D9GdwXj-b-gIkvn9NpDQ/viewform?usp=header" target="_blank" class="block px-4 py-2 mb-4 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700">Open Google Form</a>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Contact Information:</h3>
+        <ul class="space-y-2 text-gray-700">
+            <li><strong>Mr. Roslan Bin Ismail:</strong> 019-2307884</li>
+            <li><strong>Mr. Rehan Bin Ismail:</strong> 013-3026486</li>
+            <li><strong>Mr. Rafiee Bin Ismail:</strong> 019-2165029</li>
+        </ul>
+        <hr class="my-6 border-gray-300">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">System Support</h3>
+        <p class="text-gray-700 mb-4"><strong>email:</strong> support@WashWait.com</p>
+        <button onclick="goBackToMain()" class="mt-6 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Back to Main Page</button>
+    </div>
+</div>
+
+<!-- Location Page -->
+<div id="locationPage" class="hidden min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-gray-100 to-gray-200 px-4">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+        <h2 class="text-2xl font-semibold text-blue-600 mb-4">Location of Washing Machine</h2>
+        <p class="text-gray-700 mb-4">
+            The washing machine is located at Mahallah Asiah, Universiti Islam Antarabangsa. Use the map below to find the exact location:
+        </p>
+        <div id="map" class="w-full h-64 rounded-lg mb-4"></div>
+        <button onclick="goBackToMain()" class="mt-6 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Back to Main Page</button>
+    </div>
+</div>
+
+    <!-- Main Content (after login) -->
+    <div id="mainContent" class="hidden">
+        <!-- Notification System -->
+        <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+        <nav class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 py-3">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-xl font-semibold text-blue-600">WashWait</h1>
+                    <div class="flex gap-4">
+                        <button id="locationButton" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Location</button>
+                        <button id="reportButton" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Report</button>
+                        <button id="logoutButton" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="logout()">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <!-- Block Selection -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold mb-4">Select Your Block</h2>
+                <div class="grid grid-cols-5 gap-2 mb-6">
+                    
+                <button id="blockAButton" class="block-button px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onclick="switchBlock('blockA'); changeButtonColor('blockAButton')";>Block C</button>
+                <button id="blockBButton" class="block-button px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50" onclick="switchBlock('blockB'); changeButtonColor('blockBButton')";>Block F</button>
+                <button id="blockCButton" class="block-button px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50" onclick="switchBlock('blockC'); changeButtonColor('blockCButton')";>Block E</button>
+                    
+                </div>
+            </div>
+
+            <!-- Block C Content -->
+            <div id="blockAContent" class="block-content mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Block C Machines</h2>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="p-6 space-y-4">
+                        <div class="machine-card border rounded-lg overflow-hidden in-use" data-machine="M1">
+                            <div class="p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-medium">Block C - M1</span>
+                                    <span class="text-sm waitingTime">1 person waiting - ends at </span>
+                                </div>
+                                <div class="mt-3 space-y-2">
+                                    <button onclick="joinQueue('Block A - M1')"  class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                        Join Queue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="machine-card p-4 rounded-lg border available" data-machine="M2">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium">Block C - M2</span>
+                                <span class="availability-label">Available</span>
+                            </div>
+                            <button onclick="bookMachine('Block A - M2')" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Book Now</button>
+                        </div>
+
+                        <div class="queue-section mt-6 p-4 bg-white rounded-lg shadow-sm">
+                            <h3 class="text-2xl font-bold">Queue</h3>
+                            <div id="queueListA" class="queue-list space-y-2">
+                                <!-- Queue items will be dynamically added here -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block F Content -->
+            <div id="blockBContent" class="block-content mb-8 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Block F Machines</h2>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="p-6 space-y-4">
+                        <div class="machine-card border rounded-lg overflow-hidden in-use" data-machine="B1">
+                            <div class="p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-medium">Block F - M1</span>
+                                    <span class="text-sm waitingTime">1 person waiting - ends at </span>
+                                </div>
+                                <div class="mt-3 space-y-2">
+                                    <button onclick="joinQueue('Block B - M1')" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                        Join Queue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="machine-card p-4 rounded-lg border available" data-machine="B2">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium">Block F - M2</span>
+                                <span class="availability-label">Available</span>
+                            </div>
+                            <button onclick="bookMachine('Block B - M2')" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Book Now</button>
+                        </div>
+
+                        <div class="queue-section mt-6 p-4 bg-white rounded-lg shadow-sm">
+                            <h3 class="text-2xl font-bold">Queue</h3>
+                            <div id="queueListB" class="queue-list space-y-2">
+                                <!-- Queue items will be dynamically added here -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block E Content -->
+            <div id="blockCContent" class="block-content mb-8 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Block E Machines</h2>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm">
+                    <div class="p-6 space-y-4">
+                        <div class="machine-card border rounded-lg overflow-hidden in-use" data-machine="C1">
+                            <div class="p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-medium">Block E - M1</span>
+                                    <span class="text-sm waitingTime">1 person waiting - ends at </span>
+                                </div>
+                                <div class="mt-3 space-y-2">
+                                    <button onclick="joinQueue('Block C - M1')" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                        Join Queue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="machine-card p-4 rounded-lg border available" data-machine="C2">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium">Block E - M2</span>
+                                <span class="availability-label">Available</span>
+                            </div>
+                            <button onclick="bookMachine('Block C - M2')" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Book Now</button>
+                        </div>
+
+                        <div class="queue-section mt-6 p-4 bg-white rounded-lg shadow-sm">
+                            <h3 class="text-2xl font-bold">Queue</h3>
+                            <div id="queueListC" class="queue-list space-y-2">
+                                <!-- Queue items will be dynamically added here -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        //For login and register page
+        const users = [];
+        let isRegisterMode = false;
+
+        const formTitle = document.getElementById("formTitle");
+        const authButton = document.getElementById("authButton");
+        const switchToRegister = document.getElementById("switchToRegister");
+        const authForm = document.getElementById("authForm");
+        const loginPage = document.getElementById("loginPage");
+        const mainContent = document.getElementById("mainContent");
+
+        switchToRegister.addEventListener("click", () => {
+            isRegisterMode = !isRegisterMode;
+            if (isRegisterMode) {
+                formTitle.textContent = "Register for WashWait";
+                authButton.textContent = "Register";
+                switchToRegister.textContent = "Already have an account? Login";
+            } else {
+                formTitle.textContent = "Login to Washwait";
+                authButton.textContent = "Login";
+                switchToRegister.textContent = " Register";
+            }
+        });
+
+        authForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            if (isRegisterMode) {
+                if (users.find((user) => user.username === username)) {
+                    alert("Username already exists. Please choose a different one.");
+                } else {
+                    users.push({ username, password });
+                    alert("Registration successful! You can now log in.");
+                    isRegisterMode = false;
+                    formTitle.textContent = "Login to WashWait";
+                    authButton.textContent = "Login";
+                    switchToRegister.textContent = " Register";
+                }
+            } else {
+                const user = users.find(
+                    (user) => user.username === username && user.password === password
+                );
+                if (user) {
+                    loginPage.style.display = "none";
+                    mainContent.style.display = "block";
+                } else {
+                    alert("Invalid username or password. Please try again.");
+                }
+            }
+
+            authForm.reset();
+        });
+    </script>
+
+    <script>
+        function logout() {
+            // Hide the main content
+            mainContent.style.display = "none";
+
+            // Show the login page
+            loginPage.style.display = "flex";
+
+
+            // Optionally, reset the login form
+            authForm.reset();
+        }
+
+        document.getElementById('logoutButton').addEventListener('click', function() {
+        logout(logoutButton);
+        });
+
+        //For booking machine
+        function bookMachine() {
+        const button = event.target;
+        const machineCard = button.closest('.machine-card'); // Get the closest machine card
+    
+        // Change button text to indicate the machine is booked
+        button.textContent = "In Use";
+    
+        // Disable the button
+        button.disabled = true;
+
+        // Change button styles to indicate it's in use
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        button.classList.add('bg-gray-400', 'cursor-not-allowed');
+    
+        // Change the machine card background color to red
+        machineCard.classList.remove('available', 'reserved');
+        machineCard.classList.add('in-use');
+        machineCard.style.backgroundColor = "#fee2e2"; // Light red background
+        machineCard.style.color = "#991b1b"; // Dark red text color
+
+        // Update the availability label
+        const availabilityLabel = machineCard.querySelector('.availability-label'); // Adjust selector as needed
+        if (availabilityLabel) {
+            // Calculate the time 30 minutes from now
+            const endTime = new Date();
+            endTime.setMinutes(endTime.getMinutes() + 30);
+
+            // Format the time as "HH:MM AM/PM"
+            const options = { hour: 'numeric', minute: 'numeric', hour12: true };
+            const formattedTime = endTime.toLocaleTimeString([], options);
+
+            // Update the label to show the end time
+            availabilityLabel.textContent = `Ends at ${formattedTime}`;
+        }
+
+        }
+        
+        // For joining queue
+        function joinQueue() {
+        const button = event.target;
+        const machineCard = button.closest('.machine-card'); // Get the closest machine card
+        const machineName = machineCard.querySelector('span').textContent; // Get the machine name
+        
+        // Change button text to indicate the machine is in queue
+        button.textContent = "In Queue";
+
+        // Disable the button
+        button.disabled = true;
+
+        // Change button styles to indicate it's in queue
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        button.classList.add('bg-gray-400', 'cursor-not-allowed');
+
+        // Add the person to the queue list for this machine
+        const queueList = document.getElementById('queueListA'); // This is for Block A
+        const queueItem = document.createElement('div');
+        queueItem.classList.add('queue-item', 'p-2', 'border-b', 'border-gray-200');
+        queueItem.textContent = `Waiting for ${machineName}`;
+        queueList.appendChild(queueItem);
+
+        const queueListB = document.getElementById('queueListB'); // This is for Block B
+        const queueItemB = document.createElement('div');
+        queueItemB.classList.add('queue-item-B', 'p-2', 'border-b', 'border-gray-200');
+        queueItemB.textContent = `Waiting for ${machineName}`;
+        queueListB.appendChild(queueItemB);
+
+        const queueListC = document.getElementById('queueListC'); // This is for Block C
+        const queueItemC = document.createElement('div');
+        queueItemC.classList.add('queue-item-C', 'p-2', 'border-b', 'border-gray-200');
+        queueItemC.textContent = `Waiting for ${machineName}`;
+        queueListC.appendChild(queueItemC);
+
+        }
+
+         // Function to format the time
+    function formatTime(date) {
+        const options = { hour: '2-digit', minute: '2-digit', hour12: true };
+        return date.toLocaleTimeString([], options); // e.g., "10:30 AM"
+    }
+
+    // Function to set the waiting time for all blocks
+    function setWaitingTimes() {
+        // Select all elements with the class 'waitingTime'
+        const waitingElements = document.querySelectorAll('.waitingTime');
+
+        // Loop through each waiting time element and set the time
+        waitingElements.forEach((element, index) => {
+            const now = new Date(); // Get the current date and time
+            now.setMinutes(now.getMinutes() + 30); // Add 30 minutes to the current time
+            const endTime = formatTime(now); // Format the time
+
+            // Update the waiting time span
+            const waitingCount = index + 1; // Example waiting count (1, 2, 3, ...)
+            element.textContent = `1 person${waitingCount !== 1 ? 's' : ''} waiting - ends at ${endTime}`;
+        });
+    }
+
+    // Call the function to set the waiting times
+    setWaitingTimes();
+
+
+        function getTimePlus30Minutes() {
+            const now = new Date(); // Get the current date and time
+            now.setMinutes(now.getMinutes() + 30); // Add 30 minutes
+            const options = { hour: '2-digit', minute: '2-digit', hour12: true };
+            return now.toLocaleTimeString([], options); // Format the time
+        }
+
+
+        // Login functionality
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (username && password) {
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+            }
+        });
+
+        // Function to switch block content visibility
+        function switchBlock(block) {
+        // Hide all block content divs initially
+        document.querySelectorAll('.block-content').forEach(content => {
+            content.classList.add('hidden'); 
+        });
+
+        // Show the selected block content div
+        const blockElement = document.getElementById(`${block}Content`);
+        if (blockElement) {
+            blockElement.classList.remove('hidden');
+        }
+    }
+
+        function changeButtonColor(buttonId) {
+            // Reset all buttons to their default color
+            document.querySelectorAll('.block-button').forEach(button => {
+                button.classList.remove('bg-blue-600', 'text-white');
+                button.classList.add('bg-white', 'text-blue-600');
+            });
+
+            // Apply blue color to the clicked button
+            const button = document.getElementById(buttonId);
+            button.classList.remove('bg-white', 'text-blue-600');
+            button.classList.add('bg-blue-600', 'text-white');
+        }
+
+        // Add event listeners to block buttons
+        document.getElementById('blockAButton').addEventListener('click', function() {
+        changeButtonColor('blockAButton');
+        switchBlock('blockA');
+        });
+
+        document.getElementById('blockBButton').addEventListener('click', function() {
+        changeButtonColor('blockBButton');
+        switchBlock('blockB');
+        });
+
+        document.getElementById('blockCButton').addEventListener('click', function() {
+        changeButtonColor('blockCButton');
+        switchBlock('blockC');
+        });
+
+    </script>
+
+<script>
+    const reportPage = document.getElementById('reportPage');
+
+    document.getElementById('reportButton').addEventListener('click', function() {
+        // Show the report page
+        mainContent.style.display = "none";
+        reportPage.classList.remove('hidden');
+    });
+
+    function goBackToMain() {
+        // Go back to the main content
+        reportPage.classList.add('hidden');
+        mainContent.style.display = "block";
+    }
+</script>
+
+<script>
+    const locationPage = document.getElementById('locationPage');
+    
+    document.getElementById('reportButton').addEventListener('click', function() {
+        mainContent.style.display = "none";
+        reportPage.classList.remove('hidden');
+        locationPage.classList.add('hidden');
+    });
+
+    document.getElementById('locationButton').addEventListener('click', function() {
+        mainContent.style.display = "none";
+        locationPage.classList.remove('hidden');
+        reportPage.classList.add('hidden');
+        initMap(); // Initialize the map when the location page is shown
+    });
+
+    function goBackToMain() {
+        mainContent.style.display = "block";
+        reportPage.classList.add('hidden');
+        locationPage.classList.add('hidden');
+    }
+
+    function initMap() {
+    // Initialize OpenStreetMap
+    const map = L.map('map').setView([3.258741, 101.732331], 18); // Center of the three locations
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Add markers for each location
+    L.marker([3.259155, 101.732299]).addTo(map)
+        .bindPopup('<b>Block E</b><br>Washing Machine Location: <a href="https://www.openstreetmap.org/#map=19/3.259155/101.732299" target="_blank">View on OSM</a>')
+        .openPopup();
+
+    L.marker([3.258593, 101.732012]).addTo(map)
+        .bindPopup('<b>Block C</b><br>Washing Machine Location: <a href="https://www.openstreetmap.org/#map=19/3.258593/101.732012" target="_blank">View on OSM</a>');
+
+    L.marker([3.258741, 101.732331]).addTo(map)
+        .bindPopup('<b>Block F</b><br>Washing Machine Location: <a href="https://www.openstreetmap.org/#map=19/3.258741/101.732331" target="_blank">View on OSM</a>');
+}
+</script>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</body>
+</html>
